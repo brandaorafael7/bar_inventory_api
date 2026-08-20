@@ -1,9 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { LoginDto } from './dto/login.dto';
-import { JwtPayload } from './strategies/jwt.strategy';
+import { JwtService } from '@nestjs/jwt';
+import { RegisterDto } from './dto/register.dto';
+import { Role } from '../users/schemas/user.schema';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -12,30 +12,34 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(loginDto: LoginDto): Promise<{ accessToken: string; user: { name: string; email: string; role: string } }> {
-    const user = await this.usersService.findByEmail(loginDto.email);
+  // ... (mantenha os métodos validateUser e login existentes)
 
-    if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+  async register(dto: RegisterDto) {
+    const existingUser = await this.usersService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('Já existe um usuário com este e-mail.');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciais inválidas.');
-    }
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const payload: JwtPayload = {
-      sub: user._id.toString(),
-      email: user.email,
-      role: user.role,
-    };
+    const newUser = await this.usersService.create({
+      name: dto.name,
+      email: dto.email,
+      password: hashedPassword,
+      role: Role.EMPLOYEE, // Usuários autocadastrados iniciam como Funcionário
+    });
+
+    const userId = (newUser as unknown as { _id: { toString(): string } })._id.toString();
+    const payload = { sub: userId, email: newUser.email, role: newUser.role };
+    const accessToken = this.jwtService.sign(payload);
 
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken,
       user: {
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        id: userId,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
       },
     };
   }
