@@ -1,9 +1,10 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '../users/schemas/user.schema';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -12,7 +13,35 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // ... (mantenha os métodos validateUser e login existentes)
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.usersService.findByEmail(email);
+    if (user && user.isActive) {
+      const isMatch = await bcrypt.compare(pass, user.password);
+      if (isMatch) {
+        const { password, ...result } = user.toObject();
+        return result;
+      }
+    }
+    return null;
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.validateUser(dto.email, dto.password);
+    if (!user) {
+      throw new UnauthorizedException('E-mail ou senha incorretos.');
+    }
+
+    const payload = { sub: user._id.toString(), email: user.email, role: user.role };
+    return {
+      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(dto.email);
@@ -20,23 +49,23 @@ export class AuthService {
       throw new ConflictException('Já existe um usuário com este e-mail.');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    // Chave para definir se a conta é de Administrador
+    const validAdminKey = process.env.ADMIN_REGISTRATION_KEY || 'bar-admin-2026';
+    const role = dto.adminKey === validAdminKey ? Role.ADMIN : Role.EMPLOYEE;
 
     const newUser = await this.usersService.create({
       name: dto.name,
       email: dto.email,
-      password: hashedPassword,
-      role: Role.EMPLOYEE, // Usuários autocadastrados iniciam como Funcionário
+      password: dto.password,
+      role,
     });
 
-    const userId = (newUser as unknown as { _id: { toString(): string } })._id.toString();
-    const payload = { sub: userId, email: newUser.email, role: newUser.role };
-    const accessToken = this.jwtService.sign(payload);
-
+    const newUserId = String((newUser as unknown as { _id: unknown })._id);
+    const payload = { sub: newUserId, email: newUser.email, role: newUser.role };
     return {
-      accessToken,
+      accessToken: this.jwtService.sign(payload),
       user: {
-        id: userId,
+        id: newUserId,
         name: newUser.name,
         email: newUser.email,
         role: newUser.role,
