@@ -36,6 +36,17 @@ export class ProductsService {
       .exec();
   }
 
+  async findLowStock(): Promise<ProductDocument[]> {
+    return this.productModel
+      .find({
+        isActive: true,
+        $expr: { $lte: ['$currentStock', '$minStock'] },
+      })
+      .populate('category', 'name')
+      .sort({ currentStock: 1 })
+      .exec();
+  }
+
   async findOne(id: string): Promise<ProductDocument> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID de produto inválido.');
