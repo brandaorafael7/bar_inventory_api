@@ -1,13 +1,21 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Permite conexões do frontend React
-  app.enableCors();
+  // Aumenta o limite para aceitar imagens em Base64 de até 10MB
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,32 +26,16 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Bar Inventory API')
-    .setDescription('API de Gestão e Controle de Estoque para Bares e Tabacarias')
+    .setTitle('Bar & Inventory API')
+    .setDescription('Documentação da API de Gestão de Estoque')
     .setVersion('1.0')
-    .addTag('auth', 'Autenticação e Login')
-    .addTag('categories', 'Categorias de Produtos')
-    .addTag('products', 'Produtos e Controle de Estoque')
-    .addTag('stock-movements', 'Histórico e Auditoria de Estoque')
-    .addTag('users', 'Gestão de Usuários')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Cole o token JWT recebido no login',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Aplicação rodando em: http://localhost:${port}`);
 }
 bootstrap();
