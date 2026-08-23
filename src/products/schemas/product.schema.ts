@@ -37,6 +37,9 @@ export class Product {
 
   @Prop({ min: 1 })
   unitsPerPack?: number;
+
+  @Prop({ default: true })
+  isActive!: boolean;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
