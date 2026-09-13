@@ -1,8 +1,14 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCategoryDto {
-  @IsString({ message: 'O nome da categoria deve ser um texto.' })
-  @IsNotEmpty({ message: 'O nome da categoria é obrigatório.' })
-  @MinLength(3, { message: 'O nome deve ter no mínimo 3 caracteres.' })
-  name!: string;
+  @ApiProperty({ example: 'Cervejas' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiPropertyOptional({ example: 'Garrafas e long necks' })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }
