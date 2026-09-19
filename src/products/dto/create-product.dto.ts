@@ -1,61 +1,52 @@
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'Cerveja Heineken 330ml' })
+  @ApiProperty({ example: 'Cerveja Corona' })
   @IsString()
-  @IsNotEmpty({ message: 'O nome do produto é obrigatório.' })
-  name!: string;
-
-  @ApiProperty({ example: '60d0fe4f5311236168a109ca' })
-  @IsString()
-  @IsNotEmpty({ message: 'A categoria é obrigatória.' })
-  category!: string;
+  @IsNotEmpty()
+  name: string;
 
   @ApiPropertyOptional({ example: '7891234567890' })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   barcode?: string;
 
-  @ApiProperty({ example: 5.5 })
-  @IsNumber()
-  @Min(0, { message: 'O preço de custo não pode ser negativo.' })
-  costPrice!: number;
-
-  @ApiProperty({ example: 9.0 })
-  @IsNumber()
-  @Min(0, { message: 'O preço diurno não pode ser negativo.' })
-  dayPrice!: number;
-
-  @ApiPropertyOptional({ example: 11.0 })
+  @ApiPropertyOptional({ example: '64b1f2e8...' })
+  @IsString()
   @IsOptional()
+  category?: string;
+
+  @ApiProperty({ example: 12.0 })
   @IsNumber()
   @Min(0)
-  nightPrice?: number;
+  dayPrice: number;
+
+  @ApiPropertyOptional({ example: 15.0 })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  eventPrice?: number;
+
+  @ApiPropertyOptional({ example: 8.0 })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  costPrice?: number;
 
   @ApiProperty({ example: 50 })
   @IsNumber()
-  currentStock!: number;
+  @Min(0)
+  currentStock: number;
 
   @ApiPropertyOptional({ example: 10 })
-  @IsOptional()
   @IsNumber()
   @Min(0)
+  @IsOptional()
   minStock?: number;
 
   @ApiPropertyOptional({ example: 'un' })
-  @IsOptional()
   @IsString()
+  @IsOptional()
   unit?: string;
-
-  @ApiPropertyOptional({ example: false })
-  @IsOptional()
-  @IsBoolean()
-  isFractionable?: boolean;
-
-  @ApiPropertyOptional({ example: 20 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  unitsPerPack?: number;
 }
