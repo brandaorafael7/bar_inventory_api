@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from './schemas/product.schema';
@@ -9,62 +13,52 @@ import { CategoriesService } from '../categories/categories.service';
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectModel(Product.name) private readonly productModel: Model<ProductDocument>,
+    @InjectModel(Product.name)
+    private readonly productModel: Model<ProductDocument>,
     private readonly categoriesService: CategoriesService,
   ) {}
 
-  async create(createProductDto: CreateProductDto): Promise<ProductDocument> {
-    if (!Types.ObjectId.isValid(createProductDto.category)) {
-      throw new BadRequestException('ID de categoria inválido.');
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    if (createProductDto.category) {
+      if (!Types.ObjectId.isValid(createProductDto.category)) {
+        throw new BadRequestException('ID de categoria inválido.');
+      }
+      await this.categoriesService.findOne(createProductDto.category);
     }
 
-    await this.categoriesService.findOne(createProductDto.category);
-
-    const createdProduct = new this.productModel({
-      ...createProductDto,
-      category: new Types.ObjectId(createProductDto.category),
-    });
-
+    const createdProduct = new this.productModel(createProductDto);
     return createdProduct.save();
   }
 
-  async findAll(): Promise<ProductDocument[]> {
+  async findAll(): Promise<Product[]> {
     return this.productModel
       .find({ isActive: true })
-      .populate('category', 'name')
+      .populate('category')
       .sort({ name: 1 })
       .exec();
   }
 
-  async findLowStock(): Promise<ProductDocument[]> {
-    return this.productModel
-      .find({
-        isActive: true,
-        $expr: { $lte: ['$currentStock', '$minStock'] },
-      })
-      .populate('category', 'name')
-      .sort({ currentStock: 1 })
-      .exec();
-  }
-
-  async findOne(id: string): Promise<ProductDocument> {
+  async findOne(id: string): Promise<Product> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID de produto inválido.');
     }
 
     const product = await this.productModel
       .findById(id)
-      .populate('category', 'name')
+      .populate('category')
       .exec();
 
     if (!product || !product.isActive) {
-      throw new NotFoundException(`Produto #${id} não encontrado.`);
+      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
     }
 
     return product;
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<ProductDocument> {
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID de produto inválido.');
     }
@@ -76,36 +70,44 @@ export class ProductsService {
       await this.categoriesService.findOne(updateProductDto.category);
     }
 
-    const updateData: any = { ...updateProductDto };
-    if (updateProductDto.category) {
-      updateData.category = new Types.ObjectId(updateProductDto.category);
-    }
-
     const updatedProduct = await this.productModel
-      .findByIdAndUpdate(id, updateData, { new: true })
-      .populate('category', 'name')
+      .findByIdAndUpdate(id, updateProductDto, { new: true })
+      .populate('category')
       .exec();
 
     if (!updatedProduct) {
-      throw new NotFoundException(`Produto #${id} não encontrado.`);
+      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
     }
 
     return updatedProduct;
   }
 
-  async remove(id: string): Promise<ProductDocument> {
+  async remove(id: string): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID de produto inválido.');
     }
 
-    const product = await this.productModel
-      .findByIdAndUpdate(id, { isActive: false }, { new: true })
-      .exec();
+    const product = await this.productModel.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true },
+    );
 
     if (!product) {
-      throw new NotFoundException(`Produto #${id} não encontrado.`);
+      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
     }
 
-    return product;
+    return { message: 'Produto desativado com sucesso.' };
+  }
+
+  async findLowStock(): Promise<Product[]> {
+    return this.productModel
+      .find({
+        isActive: true,
+        $expr: {$lte: ['$currentStock', '$minStock'] },
+      })
+      .populate('category')
+      .sort({ currentStock: 1 })
+      .exec();
   }
 }
