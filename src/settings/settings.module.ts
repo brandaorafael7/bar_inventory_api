@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
-import { StoreSetting, StoreSettingSchema } from './schemas/store-setting.schema';
+import {
+  StoreSetting,
+  StoreSettingSchema,
+} from './schemas/store-setting.schema';
 
 @Module({
   imports: [

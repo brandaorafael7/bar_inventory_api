@@ -10,7 +10,12 @@ import {
   HttpStatus,
   HttpCode,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -18,6 +23,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/schemas/user.schema';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -41,21 +47,26 @@ export class ProductsController {
   }
 
   @Get('low-stock')
-  @ApiOperation({ summary: 'Lista produtos que atingiram ou estão abaixo do estoque mínimo' })
+  @ApiOperation({
+    summary: 'Lista produtos que atingiram ou estão abaixo do estoque mínimo',
+  })
   findLowStock() {
     return this.productsService.findLowStock();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca os detalhes de um produto pelo ID' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseObjectIdPipe) id: string) {
     return this.productsService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Atualiza os dados de um produto (Apenas ADMIN)' })
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+  update(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
     return this.productsService.update(id, updateProductDto);
   }
 
@@ -63,7 +74,7 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desativa um produto do catálogo (Apenas ADMIN)' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseObjectIdPipe) id: string) {
     return this.productsService.remove(id);
   }
 }

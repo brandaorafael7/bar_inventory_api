@@ -1,8 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, isValidObjectId } from 'mongoose';
 import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
-import { MovementType, StockMovement, StockMovementDocument } from './schemas/stock-movement.schema';
+import {
+  MovementType,
+  StockMovement,
+  StockMovementDocument,
+} from './schemas/stock-movement.schema';
 import { Product, ProductDocument } from '../products/schemas/product.schema';
 
 @Injectable()
@@ -14,7 +22,10 @@ export class StockMovementsService {
     private readonly productModel: Model<ProductDocument>,
   ) {}
 
-  async create(dto: CreateStockMovementDto, userId: string): Promise<StockMovement> {
+  async create(
+    dto: CreateStockMovementDto,
+    userId: string,
+  ): Promise<StockMovement> {
     if (!isValidObjectId(dto.productId)) {
       throw new BadRequestException('ID de produto inválido.');
     }

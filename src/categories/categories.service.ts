@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -18,7 +23,9 @@ export class CategoriesService {
     });
 
     if (existingCategory) {
-      throw new ConflictException('Já existe uma categoria cadastrada com esse nome.');
+      throw new ConflictException(
+        'Já existe uma categoria cadastrada com esse nome.',
+      );
     }
 
     const createdCategory = new this.categoryModel(createCategoryDto);
@@ -31,7 +38,9 @@ export class CategoriesService {
 
   async findOne(id: string): Promise<Category> {
     if (!isValidObjectId(id)) {
-      throw new NotFoundException('ID de categoria inválido.');
+      throw new BadRequestException(
+        'ID informado possui formato inválido para o MongoDB.',
+      );
     }
 
     const category = await this.categoryModel.findById(id).exec();
@@ -41,9 +50,14 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+  async update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+  ): Promise<Category> {
     if (!isValidObjectId(id)) {
-      throw new NotFoundException('ID de categoria inválido.');
+      throw new BadRequestException(
+        'ID informado possui formato inválido para o MongoDB.',
+      );
     }
 
     const updatedCategory = await this.categoryModel
@@ -58,7 +72,9 @@ export class CategoriesService {
 
   async remove(id: string): Promise<{ message: string }> {
     if (!isValidObjectId(id)) {
-      throw new NotFoundException('ID de categoria inválido.');
+      throw new BadRequestException(
+        'ID informado possui formato inválido para o MongoDB.',
+      );
     }
 
     // Soft delete: apenas desativa em vez de deletar fisicamente

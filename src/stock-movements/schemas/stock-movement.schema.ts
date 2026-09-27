@@ -14,7 +14,11 @@ export enum MovementType {
 
 @Schema({ timestamps: { createdAt: true, updatedAt: false } })
 export class StockMovement {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Product.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Product.name,
+    required: true,
+  })
   productId!: Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsMongoId, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { MovementType } from '../schemas/stock-movement.schema';
 
 export class CreateStockMovementDto {
@@ -9,7 +17,9 @@ export class CreateStockMovementDto {
   productId: string;
 
   @ApiProperty({ enum: MovementType, example: MovementType.ENTRADA })
-  @IsEnum(MovementType, { message: 'Tipo inválido. Use: ENTRADA, SAIDA, PERDA ou AJUSTE.' })
+  @IsEnum(MovementType, {
+    message: 'Tipo inválido. Use: ENTRADA, SAIDA, PERDA ou AJUSTE.',
+  })
   @IsNotEmpty({ message: 'O tipo de movimentação é obrigatório.' })
   type: MovementType;
 
@@ -18,7 +28,9 @@ export class CreateStockMovementDto {
   @IsPositive({ message: 'A quantidade deve ser maior que zero.' })
   quantity: number;
 
-  @ApiPropertyOptional({ example: 'Chegada de pedido de reposição da distribuidora' })
+  @ApiPropertyOptional({
+    example: 'Chegada de pedido de reposição da distribuidora',
+  })
   @IsOptional()
   @IsString({ message: 'O motivo deve ser um texto.' })
   reason?: string;

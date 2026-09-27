@@ -104,7 +104,7 @@ export class ProductsService {
     return this.productModel
       .find({
         isActive: true,
-        $expr: {$lte: ['$currentStock', '$minStock'] },
+        $expr: { $lte: ['$currentStock', '$minStock'] },
       })
       .populate('category')
       .sort({ currentStock: 1 })

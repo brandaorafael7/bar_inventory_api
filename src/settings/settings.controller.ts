@@ -22,7 +22,9 @@ export class SettingsController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  updateSettings(@Body() data: { storeName?: string; logoUrl?: string; phone?: string }) {
+  updateSettings(
+    @Body() data: { storeName?: string; logoUrl?: string; phone?: string },
+  ) {
     return this.settingsService.updateSettings(data);
   }
 }

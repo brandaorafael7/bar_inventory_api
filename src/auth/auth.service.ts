@@ -1,10 +1,22 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '../users/schemas/user.schema';
+
+export interface SafeUser {
+  _id: { toString(): string };
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
 
 @Injectable()
 export class AuthService {
@@ -13,13 +25,16 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string): Promise<SafeUser | null> {
     const user = await this.usersService.findByEmail(email);
     if (user && user.isActive) {
       const isMatch = await bcrypt.compare(pass, user.password);
       if (isMatch) {
-        const { password, ...result } = user.toObject();
-        return result;
+        const userObj = user.toObject() as unknown as SafeUser & {
+          password?: string;
+        };
+        delete userObj.password;
+        return userObj;
       }
     }
     return null;
@@ -31,7 +46,11 @@ export class AuthService {
       throw new UnauthorizedException('E-mail ou senha incorretos.');
     }
 
-    const payload = { sub: user._id.toString(), email: user.email, role: user.role };
+    const payload = {
+      sub: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    };
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
@@ -50,7 +69,8 @@ export class AuthService {
     }
 
     // Chave para definir se a conta é de Administrador
-    const validAdminKey = process.env.ADMIN_REGISTRATION_KEY || 'bar-admin-2026';
+    const validAdminKey =
+      process.env.ADMIN_REGISTRATION_KEY || 'bar-admin-2026';
     const role = dto.adminKey === validAdminKey ? Role.ADMIN : Role.EMPLOYEE;
 
     const newUser = await this.usersService.create({
@@ -61,7 +81,11 @@ export class AuthService {
     });
 
     const newUserId = String((newUser as unknown as { _id: unknown })._id);
-    const payload = { sub: newUserId, email: newUser.email, role: newUser.role };
+    const payload = {
+      sub: newUserId,
+      email: newUser.email,
+      role: newUser.role,
+    };
     return {
       accessToken: this.jwtService.sign(payload),
       user: {

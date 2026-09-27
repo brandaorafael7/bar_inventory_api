@@ -11,7 +11,9 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('metrics')
-  @ApiOperation({ summary: 'Obtém métricas agregadas para o painel de controle' })
+  @ApiOperation({
+    summary: 'Obtém métricas agregadas para o painel de controle',
+  })
   getMetrics() {
     return this.dashboardService.getMetrics();
   }

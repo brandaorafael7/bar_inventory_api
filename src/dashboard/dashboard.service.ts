@@ -1,12 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from '../products/schemas/product.schema';
 import {
   StockMovement,
   StockMovementDocument,
-  MovementType,
 } from '../stock-movements/schemas/stock-movement.schema';
+import { MovementType } from '../common/enums/movement-type.enum';
+
+interface DashboardProductSummary {
+  _id: Types.ObjectId;
+  name: string;
+  dayPrice?: number;
+}
+
+interface PopulatedDashboardMovement {
+  _id: Types.ObjectId;
+  productId?: DashboardProductSummary | null;
+  type: MovementType;
+  quantity: number;
+  createdAt: Date;
+}
 
 @Injectable()
 export class DashboardService {
@@ -18,7 +32,9 @@ export class DashboardService {
   ) {}
 
   async getMetrics() {
-    const totalProducts = await this.productModel.countDocuments({ isActive: true });
+    const totalProducts = await this.productModel.countDocuments({
+      isActive: true,
+    });
 
     const lowStockCount = await this.productModel.countDocuments({
       isActive: true,
@@ -28,14 +44,13 @@ export class DashboardService {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Usando o enum MovementType.SALE ou cast seguro
-    const recentSales = await this.movementModel
+    const recentSales = (await this.movementModel
       .find({
-        type: 'SALE' as any,
+        type: MovementType.SAIDA,
         createdAt: { $gte: sevenDaysAgo },
       })
-      .populate('product')
-      .exec();
+      .populate('productId', 'name dayPrice')
+      .exec()) as unknown as PopulatedDashboardMovement[];
 
     let totalRevenue = 0;
     const daysMap: Record<string, number> = {};
@@ -49,9 +64,9 @@ export class DashboardService {
       daysMap[label] = 0;
     }
 
-    recentSales.forEach((mov: any) => {
-      if (mov.product) {
-        const price = mov.product.dayPrice || 0;
+    recentSales.forEach((mov) => {
+      if (mov.productId) {
+        const price = mov.productId.dayPrice ?? 0;
         const total = price * mov.quantity;
         totalRevenue += total;
 
@@ -69,7 +84,7 @@ export class DashboardService {
 
     const totalMovementsCount = await this.movementModel.countDocuments();
     const totalLossesCount = await this.movementModel.countDocuments({
-      type: 'LOSS' as any,
+      type: MovementType.PERDA,
     });
 
     const lossRate =

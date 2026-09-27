@@ -10,39 +10,26 @@ import {
   Category,
   CategoryDocument,
 } from '../src/categories/schemas/category.schema';
-import {
-  Product,
-  ProductDocument,
-} from '../src/products/schemas/product.schema';
 import { JwtService } from '@nestjs/jwt';
 import { AllExceptionsFilter } from '../src/common/filters/http-exception.filter';
 
-interface ProductResponseBody {
+interface CategoryResponseBody {
   _id: string;
   name: string;
-  dayPrice: number;
-  eventPrice?: number;
-  costPrice?: number;
-  currentStock: number;
-  minStock: number;
-  unit: string;
+  description?: string;
+  isActive?: boolean;
   message?: string | string[];
 }
 
-describe('Products Flow (E2E)', () => {
+describe('Categories Flow (E2E)', () => {
   let app: INestApplication;
   let server: Parameters<typeof request>[0];
   let adminToken: string;
   let employeeToken: string;
   let userModel: Model<UserDocument>;
   let categoryModel: Model<CategoryDocument>;
-  let productModel: Model<ProductDocument>;
-  let adminUserId: Types.ObjectId;
-  let employeeUserId: Types.ObjectId;
-  let testCategoryId: Types.ObjectId;
-  let createdProductId: string;
-
-  const uniquePrefix = `prod_e2e_${Date.now()}`;
+  let createdCategoryId: string;
+  const uniquePrefix = `cat_e2e_${Date.now()}`;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -67,39 +54,31 @@ describe('Products Flow (E2E)', () => {
     categoryModel = app.get<Model<CategoryDocument>>(
       getModelToken(Category.name),
     );
-    productModel = app.get<Model<ProductDocument>>(getModelToken(Product.name));
     const jwtService = app.get(JwtService);
 
-    adminUserId = new Types.ObjectId();
+    const adminId = new Types.ObjectId();
     await userModel.create({
-      _id: adminUserId,
-      name: 'Admin Teste E2E',
+      _id: adminId,
+      name: 'Admin Cat Test',
       email: `${uniquePrefix}_admin@bar.com`,
       password: 'hash_fake_para_teste',
       role: Role.ADMIN,
       isActive: true,
     });
 
-    employeeUserId = new Types.ObjectId();
+    const employeeId = new Types.ObjectId();
     await userModel.create({
-      _id: employeeUserId,
-      name: 'Employee Teste E2E',
+      _id: employeeId,
+      name: 'Employee Cat Test',
       email: `${uniquePrefix}_emp@bar.com`,
       password: 'hash_fake_para_teste',
       role: Role.EMPLOYEE,
       isActive: true,
     });
 
-    testCategoryId = new Types.ObjectId();
-    await categoryModel.create({
-      _id: testCategoryId,
-      name: `${uniquePrefix}_Cat`,
-      isActive: true,
-    });
-
     adminToken = jwtService.sign(
       {
-        sub: adminUserId.toString(),
+        sub: adminId.toString(),
         email: `${uniquePrefix}_admin@bar.com`,
         role: Role.ADMIN,
       },
@@ -108,7 +87,7 @@ describe('Products Flow (E2E)', () => {
 
     employeeToken = jwtService.sign(
       {
-        sub: employeeUserId.toString(),
+        sub: employeeId.toString(),
         email: `${uniquePrefix}_emp@bar.com`,
         role: Role.EMPLOYEE,
       },
@@ -119,98 +98,97 @@ describe('Products Flow (E2E)', () => {
   afterAll(async () => {
     await userModel.deleteMany({ email: new RegExp(uniquePrefix, 'i') });
     await categoryModel.deleteMany({ name: new RegExp(uniquePrefix, 'i') });
-    await productModel.deleteMany({ name: new RegExp(uniquePrefix, 'i') });
     await app.close();
   });
 
-  it('deve cadastrar um produto completo vinculado a categoria (POST /products)', async () => {
+  it('deve criar uma nova categoria como ADMIN (POST /categories)', async () => {
     const res = await request(server)
-      .post('/products')
+      .post('/categories')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: `${uniquePrefix}_Whisky 12 Anos`,
-        category: testCategoryId.toString(),
-        dayPrice: 150,
-        eventPrice: 160,
-        costPrice: 120,
-        currentStock: 10,
-        minStock: 2,
-        unit: 'garrafa',
+        name: `${uniquePrefix}_Cervejas Artesanais`,
+        description: 'IPAs, Ales e Stouts especiais',
       });
 
-    const body = res.body as ProductResponseBody;
     expect(res.status).toBe(201);
+    const body = res.body as CategoryResponseBody;
     expect(body).toHaveProperty('_id');
-    expect(body.name).toBe(`${uniquePrefix}_Whisky 12 Anos`);
-    expect(body.eventPrice).toBe(160);
-    expect(body.costPrice).toBe(120);
-    createdProductId = body._id;
+    expect(body.name).toBe(`${uniquePrefix}_Cervejas Artesanais`);
+    createdCategoryId = body._id;
   });
 
-  it('deve rejeitar criação de produto com categoria em formato inválido com 400 Bad Request', async () => {
+  it('deve rejeitar criação de categoria por EMPLOYEE com 403 Forbidden (POST /categories)', async () => {
     const res = await request(server)
-      .post('/products')
+      .post('/categories')
+      .set('Authorization', `Bearer ${employeeToken}`)
+      .send({
+        name: `${uniquePrefix}_Vinhos`,
+      });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('deve rejeitar criação de categoria sem nome obrigatório com 400 Bad Request', async () => {
+    const res = await request(server)
+      .post('/categories')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: `${uniquePrefix}_Invalido`,
-        category: 'categoria-invalida-123',
-        dayPrice: 50,
-        currentStock: 5,
+        description: 'Sem nome',
       });
 
     expect(res.status).toBe(400);
   });
 
-  it('deve listar todos os produtos ativos (GET /products)', async () => {
+  it('deve listar categorias ativas (GET /categories)', async () => {
     const res = await request(server)
-      .get('/products')
+      .get('/categories')
       .set('Authorization', `Bearer ${employeeToken}`);
 
     expect(res.status).toBe(200);
-    const body = res.body as ProductResponseBody[];
+    const body = res.body as CategoryResponseBody[];
     expect(Array.isArray(body)).toBe(true);
-    const found = body.some((p) => p._id === createdProductId);
+    const found = body.some((c) => c._id === createdCategoryId);
     expect(found).toBe(true);
   });
 
-  it('deve buscar produto pelo ID válido (GET /products/:id)', async () => {
+  it('deve buscar uma categoria pelo ID válido (GET /categories/:id)', async () => {
     const res = await request(server)
-      .get(`/products/${createdProductId}`)
+      .get(`/categories/${createdCategoryId}`)
       .set('Authorization', `Bearer ${employeeToken}`);
 
-    const body = res.body as ProductResponseBody;
     expect(res.status).toBe(200);
-    expect(body._id).toBe(createdProductId);
+    const body = res.body as CategoryResponseBody;
+    expect(body._id).toBe(createdCategoryId);
   });
 
-  it('deve rejeitar busca com ID malformado com 400 Bad Request via ParseObjectIdPipe', async () => {
+  it('deve rejeitar ID inválido com 400 Bad Request via ParseObjectIdPipe (GET /categories/:id)', async () => {
     const res = await request(server)
-      .get('/products/abc-nao-e-id')
+      .get('/categories/id-invalido-123')
       .set('Authorization', `Bearer ${employeeToken}`);
 
-    const body = res.body as { message: string | string[] };
     expect(res.status).toBe(400);
+    const body = res.body as { message: string | string[] };
     expect(body.message).toContain(
       'ID informado possui formato inválido para o MongoDB.',
     );
   });
 
-  it('deve atualizar o produto como ADMIN (PATCH /products/:id)', async () => {
+  it('deve atualizar uma categoria existente como ADMIN (PATCH /categories/:id)', async () => {
     const res = await request(server)
-      .patch(`/products/${createdProductId}`)
+      .patch(`/categories/${createdCategoryId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        dayPrice: 175,
+        description: 'Descrição atualizada com sucesso',
       });
 
-    const body = res.body as ProductResponseBody;
     expect(res.status).toBe(200);
-    expect(body.dayPrice).toBe(175);
+    const body = res.body as CategoryResponseBody;
+    expect(body.description).toBe('Descrição atualizada com sucesso');
   });
 
-  it('deve desativar o produto como ADMIN (DELETE /products/:id)', async () => {
+  it('deve desativar uma categoria como ADMIN (DELETE /categories/:id)', async () => {
     const res = await request(server)
-      .delete(`/products/${createdProductId}`)
+      .delete(`/categories/${createdCategoryId}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(204);
